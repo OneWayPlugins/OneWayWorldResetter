@@ -6,3 +6,25 @@ load: STARTUP
 authors: [OneWayCraft]
 description: Reset agendado de resource worlds com suporte Paper e Folia.
 website: https://github.com/onewaycraft/OneWayWorldResetter
+
+permissions:
+  owwr.admin:
+    description: Acesso administrativo total (/owwr).
+    default: op
+    children:
+      owwr.command.reload: true
+      owwr.command.reset: true
+      owwr.command.resume: true
+      owwr.command.history: true
+      owwr.command.status: true
+      owwr.command.region: true
+      owwr.command.gui: true
+  owwr.tp:
+    description: Permite usar /resource [mundo].
+    default: true
+  owwr.back:
+    description: Permite voltar à última localização após teleporte para resource world.
+    default: true
+  owwr.bypass.cooldown:
+    description: Ignora cooldown de teleporte.
+    default: op
