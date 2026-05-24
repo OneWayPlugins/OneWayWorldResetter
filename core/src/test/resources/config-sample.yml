@@ -1,0 +1,45 @@
+settings:
+  locale: en
+  max-concurrent-resets: 1
+
+resource-worlds:
+  mining:
+    world-name: world_resource
+    environment: NORMAL
+    enabled: true
+    auto-create: true
+    seed:
+      strategy: cycling
+      values: [12345, 67890]
+    reset:
+      strategy: in-place
+      schedule:
+        type: daily
+        time: "05:00"
+      warnings-minutes: [30, 10, 5, 1]
+      gates:
+        min-tps:     { value: 15.0, on-fail: delay }
+        max-players: { value: 10,   on-fail: delay }
+        min-disk-gb: { value: 5,    on-fail: abort }
+      pause-autosave: true
+      grace-warning: true
+    teleport:
+      mode: rtp
+      safe-location: true
+      destination-on-reset: world
+    world-settings:
+      difficulty: NORMAL
+      gamerules: { doDaylightCycle: "true" }
+      border: { center: [0, 0], size: 5000 }
+    regions:
+      enabled: false
+      list: []
+    copy-regions:
+      worldguard: false
+      residence: false
+      griefprevention: false
+    notifications:
+      bossbar: true
+      title: false
+      actionbar: true
+      discord-webhook: ""
