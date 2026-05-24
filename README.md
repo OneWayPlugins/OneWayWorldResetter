@@ -20,6 +20,52 @@ de crash, GUI de teleporte, suporte a Folia, e API pública para outros plugins.
 - **Suporte Folia:** scheduler regionalizado + WorldManager via GlobalRegionScheduler.
 - **Soft-deps:** Multiverse-Core, PlaceholderAPI, Discord webhook.
 
+## Chunky Pre-Generation (v1.1)
+
+Integração opcional com o plugin [Chunky](https://github.com/pop4959/Chunky) para pré-gerar
+chunks de um resource world imediatamente após o RECREATE. Quando habilitada para um mundo,
+o reset ganha uma nova fase `PREGEN` entre `RECREATE` e `VERIFY`.
+
+### Habilitar
+
+Adicione ao `config.yml` do mundo:
+
+```yaml
+resource-worlds:
+  mining:
+    # ...
+    reset:
+      # ...
+      chunky:
+        enabled: true
+        shape: square         # square | circle | star | diamond | triangle
+        center: [0, 0]
+        radius: 5000
+        max-duration-minutes: 60
+        block-teleport-during-pregen: true
+        failure-behavior: critical   # critical = retry padrão; warning = sucesso parcial
+        notifications:
+          bossbar: false
+          actionbar: false
+          discord: false
+```
+
+### Comportamento
+
+- **Soft-dep**: se o plugin Chunky não estiver instalado, a fase PREGEN é skipada com warning no log; demais resets funcionam normal.
+- **Timeout**: pre-gen que estoura `max-duration-minutes` é tratado como sucesso parcial (history registra timeout) ou erro hard conforme `failure-behavior`.
+- **/resource bloqueado durante pre-gen**: quando `block-teleport-during-pregen: true`, jogadores recebem mensagem com progresso atual.
+- **Crash recovery**: se o servidor cair durante PREGEN, o reset retoma consultando Chunky no startup.
+
+### Comandos
+
+`/owwr chunky <status|start|cancel|pause|resume> <world>` — controle manual.
+Permissão: `owwr.command.chunky` (filho de `owwr.admin`).
+
+### GUI
+
+`/owwr gui` → item "Chunky Control" abre a GUI dedicada de pre-gen.
+
 ## Instalação
 
 1. Coloque `OneWayWorldResetter-X.Y.Z.jar` em `plugins/`.

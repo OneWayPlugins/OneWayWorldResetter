@@ -54,3 +54,26 @@ public void onPreReset(BukkitPreResetEvent event) {
     if (myCondition()) event.setCancelled(true);
 }
 ```
+
+## PREGEN phase (v1.1)
+
+A fase opcional `PREGEN` é inserida entre `RECREATE` e `VERIFY` para mundos com `chunky.enabled=true`:
+
+```
+RECREATE → PREGEN → VERIFY → COMPLETE
+```
+
+A integração com Chunky vive em `integrations/chunky/` como adapter soft-dep:
+
+- `core/pregen/PregenService` — interface platform-agnóstica.
+- `core/pregen/NoopPregenService` — fallback quando Chunky ausente.
+- `integrations/chunky/ChunkyPregenService` — impl real via Chunky API (`compileOnly`).
+- `core/reset/PregenResetStrategyDecorator` — decorator que envolve qualquer `ResetStrategy` (princípio OCP).
+
+O composition root no `plugin` faz:
+
+```java
+PregenService pregen = ChunkyAdapterFactory.tryCreate(this, getLogger());
+if (pregen == null) pregen = new NoopPregenService();
+strategies.put("in-place", new PregenResetStrategyDecorator(inPlace, pregen, notifications));
+```

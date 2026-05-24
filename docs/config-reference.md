@@ -39,3 +39,20 @@ Cada chave é um id lógico. Campos:
 - `regions.enabled`, `regions.list`: reset por região (Fase 6).
 - `copy-regions`: cópia opcional de proteções (WG/Residence/GP).
 - `notifications`: bossbar/title/actionbar/discord-webhook.
+
+## resource-worlds.<id>.reset.chunky (v1.1)
+
+Bloco opcional. Quando ausente OU `enabled: false`, a fase PREGEN é skipada.
+
+| chave | tipo | default | descrição |
+|---|---|---|---|
+| enabled | bool | false | Habilita pre-gen pós-reset |
+| shape | string | (required) | "square" \| "circle" \| "star" \| "diamond" \| "triangle" |
+| center | [int, int] | (required) | [x, z] em blocos |
+| radius | double | (required, > 0) | Raio em blocos |
+| max-duration-minutes | int | 60 | Limite de tempo; expirar = sucesso parcial |
+| block-teleport-during-pregen | bool | true | Bloqueia /resource enquanto pre-gen roda |
+| failure-behavior | string | "critical" | "critical" (retry) \| "warning" (sucesso parcial) |
+| notifications.bossbar | bool | false | Mostra bossbar durante pre-gen |
+| notifications.actionbar | bool | false | Mostra actionbar durante pre-gen |
+| notifications.discord | bool | false | (Reservado para webhook Discord futuro) |
