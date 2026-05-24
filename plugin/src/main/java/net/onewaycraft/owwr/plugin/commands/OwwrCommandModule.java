@@ -7,6 +7,9 @@ import net.onewaycraft.owwr.core.persistence.HistoryRepository;
 import net.onewaycraft.owwr.core.reset.ResetService;
 import net.onewaycraft.owwr.core.teleport.PlayerRef;
 import net.onewaycraft.owwr.core.teleport.TeleportService;
+import net.onewaycraft.owwr.paper.teleport.BukkitTeleportService;
+import net.onewaycraft.owwr.plugin.gui.AdminGui;
+import net.onewaycraft.owwr.plugin.gui.TeleportGui;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -18,21 +21,17 @@ import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @brief Registra a árvore de comandos via Cloud.
- *
- * /owwr (admin): help, reload, reset, history, status, tp
- * /resource [world]: teleporta para resource world.
- */
 public final class OwwrCommandModule {
 
     private final LegacyPaperCommandManager<CommandSender> manager;
     private final ResetService reset;
     private final OwwrConfig config;
-    private final TeleportService teleport;
+    private final BukkitTeleportService teleport;
     private final MessageService messages;
     private final HistoryRepository history;
     private final CooldownTracker cooldowns;
+    private final TeleportGui teleportGui;
+    private final AdminGui adminGui;
 
     public OwwrCommandModule(Plugin plugin, ResetService reset, OwwrConfig config,
                              TeleportService teleport, MessageService messages,
@@ -41,10 +40,13 @@ public final class OwwrCommandModule {
         try { this.manager.registerBrigadier(); } catch (Throwable ignored) {}
         this.reset = reset;
         this.config = config;
-        this.teleport = teleport;
+        // teleport is always a BukkitTeleportService on Paper; cast for GUI integration
+        this.teleport = (BukkitTeleportService) teleport;
         this.messages = messages;
         this.history = history;
         this.cooldowns = cooldowns;
+        this.teleportGui = new TeleportGui(this.teleport);
+        this.adminGui = new AdminGui(config);
     }
 
     public void register() {
@@ -59,7 +61,11 @@ public final class OwwrCommandModule {
         var root = manager.commandBuilder("owwr").permission("owwr.admin");
 
         manager.command(root.literal("help").handler(c ->
-            c.sender().sendMessage("/owwr help | reload | reset <world> [confirm|dry-run] | history | status | tp [world]")));
+            c.sender().sendMessage("/owwr help | gui | reload | reset <world> [confirm|dry-run] | history | status | tp [world]")));
+
+        manager.command(root.literal("gui").permission("owwr.command.gui")
+            .senderType(Player.class)
+            .handler(c -> adminGui.open(c.sender())));
 
         manager.command(root.literal("reload").permission("owwr.command.reload").handler(c ->
             c.sender().sendMessage(messages.resolve("admin.reload-ok"))));
@@ -131,19 +137,21 @@ public final class OwwrCommandModule {
                 return;
             }
         }
+        List<ResourceWorld> active = config.worlds().stream()
+            .filter(ResourceWorld::enabled).toList();
+
         if (worldId == null) {
-            List<ResourceWorld> active = config.worlds().stream()
-                .filter(ResourceWorld::enabled).toList();
             if (active.size() == 1) {
                 doTeleport(p, active.get(0));
+            } else if (active.size() > 1) {
+                teleportGui.open(p, active);
             } else {
-                p.sendMessage("Multiple worlds. Specify one: " +
-                    active.stream().map(ResourceWorld::id).toList());
+                p.sendMessage("No resource worlds available.");
             }
             return;
         }
-        config.worlds().stream()
-            .filter(w -> w.id().equalsIgnoreCase(worldId) && w.enabled())
+        active.stream()
+            .filter(w -> w.id().equalsIgnoreCase(worldId))
             .findFirst()
             .ifPresentOrElse(w -> doTeleport(p, w),
                 () -> p.sendMessage(messages.resolve("teleport.no-world",
@@ -151,7 +159,7 @@ public final class OwwrCommandModule {
     }
 
     private void doTeleport(Player p, ResourceWorld w) {
-        teleport.teleportTo(new PlayerRef(p.getUniqueId(), p.getName()), w.worldName());
+        teleport.teleportTo(new PlayerRef(p.getUniqueId(), p.getName()), w);
         cooldowns.markUsed(p.getUniqueId());
         p.sendMessage(messages.resolve("teleport.confirmed", Map.of("world", w.id())));
     }
