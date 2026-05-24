@@ -12,6 +12,11 @@ dependencyResolutionManagement {
     repositories {
         mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://oss.sonatype.org/content/repositories/snapshots/")
+        maven("https://repo.incendo.org/snapshots/") { name = "incendo" }
+        maven("https://repo.triumphteam.dev/snapshots/") { name = "triumph" }
+        maven("https://repo.extendedclip.com/releases/") { name = "extendedclip" }
+        maven("https://jitpack.io") { name = "jitpack" }
     }
 }
 
