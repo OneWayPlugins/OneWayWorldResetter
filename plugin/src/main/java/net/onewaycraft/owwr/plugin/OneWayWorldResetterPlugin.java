@@ -121,6 +121,11 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         getServer().getServicesManager().register(
             OwwrService.class, api, this, ServicePriority.Normal);
 
+        if (config.settings().updateChecker()) {
+            UpdateChecker.checkLatest("OneWayPlugins/OneWayWorldResetter",
+                getPluginMeta().getVersion().toString(), getLogger());
+        }
+
         try {
             if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
                 new net.onewaycraft.owwr.integrations.papi.OwwrExpansion(
