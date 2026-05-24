@@ -100,6 +100,8 @@ public final class YamlConfigLoader implements ConfigLoader {
         List<Integer> warnings = ((List<Object>) r.getOrDefault("warnings-minutes", List.of()))
             .stream().map(o -> ((Number) o).intValue()).toList();
 
+        ChunkyConfig chunky = parseChunky((Map<String, Object>) r.getOrDefault("chunky", Map.of()), worldId);
+
         return new ResetConfig(
             (String) r.getOrDefault("strategy", "in-place"),
             schedule,
@@ -107,7 +109,50 @@ public final class YamlConfigLoader implements ConfigLoader {
             Map.copyOf(gates),
             (Boolean) r.getOrDefault("pause-autosave", true),
             (Boolean) r.getOrDefault("grace-warning", true),
-            null
+            chunky
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private ChunkyConfig parseChunky(Map<String, Object> c, String worldId) {
+        if (c.isEmpty()) return null;  // absent block → no pre-gen
+        boolean enabled = (Boolean) c.getOrDefault("enabled", false);
+        if (!enabled) return null;     // explicitly disabled → no pre-gen
+
+        String shape = (String) c.get("shape");
+        if (shape == null) {
+            throw new IllegalArgumentException(
+                "resource-worlds." + worldId + ".reset.chunky.shape is required");
+        }
+        List<Object> center = (List<Object>) c.get("center");
+        if (center == null || center.size() != 2) {
+            throw new IllegalArgumentException(
+                "resource-worlds." + worldId + ".reset.chunky.center must be [x, z]");
+        }
+        Object radiusRaw = c.get("radius");
+        if (radiusRaw == null) {
+            throw new IllegalArgumentException(
+                "resource-worlds." + worldId + ".reset.chunky.radius is required");
+        }
+        double radius = ((Number) radiusRaw).doubleValue();
+        int maxDuration = ((Number) c.getOrDefault("max-duration-minutes", 60)).intValue();
+        boolean blockTp = (Boolean) c.getOrDefault("block-teleport-during-pregen", true);
+        String failure = (String) c.getOrDefault("failure-behavior", "critical");
+
+        Map<String, Object> notifRaw = (Map<String, Object>) c.getOrDefault("notifications", Map.of());
+        Map<String, Boolean> notifications = new LinkedHashMap<>();
+        notifRaw.forEach((k, v) -> notifications.put(k, (Boolean) v));
+
+        return new ChunkyConfig(
+            enabled,
+            shape,
+            ((Number) center.get(0)).doubleValue(),
+            ((Number) center.get(1)).doubleValue(),
+            radius,
+            maxDuration,
+            blockTp,
+            failure,
+            Map.copyOf(notifications)
         );
     }
 

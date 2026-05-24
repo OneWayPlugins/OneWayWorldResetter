@@ -1,0 +1,38 @@
+settings:
+  locale: en
+  max-concurrent-resets: 1
+resource-worlds:
+  mining:
+    world-name: world_resource
+    environment: NORMAL
+    enabled: true
+    auto-create: true
+    seed:
+      strategy: random
+      values: []
+    reset:
+      strategy: in-place
+      schedule:
+        type: daily
+        time: "05:00"
+      warnings-minutes: []
+      gates: {}
+      pause-autosave: true
+      grace-warning: true
+      chunky:
+        enabled: true
+        shape: square
+        center: [0, 0]
+        radius: 1000
+    teleport:
+      mode: spawn
+      safe-location: true
+      destination-on-reset: world
+    world-settings:
+      difficulty: NORMAL
+      gamerules: {}
+    regions:
+      enabled: false
+      list: []
+    copy-regions: {}
+    notifications: {}
