@@ -1,5 +1,6 @@
 package net.onewaycraft.owwr.paper.teleport;
 
+import net.onewaycraft.owwr.api.ResourceWorld;
 import net.onewaycraft.owwr.core.teleport.PlayerRef;
 import net.onewaycraft.owwr.core.teleport.TeleportService;
 import org.bukkit.Bukkit;
@@ -11,6 +12,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public final class BukkitTeleportService implements TeleportService {
+
+    private final SafeLocationFinder rtpFinder = new SafeLocationFinder();
 
     @Override
     public List<PlayerRef> playersIn(String worldName) {
@@ -41,5 +44,19 @@ public final class BukkitTeleportService implements TeleportService {
         Player p = Bukkit.getPlayer(player.uuid());
         if (p == null) return false;
         return p.teleport(w.getSpawnLocation());
+    }
+
+    /**
+     * @brief Teleporta respeitando o teleport.mode do resource world (spawn ou rtp).
+     */
+    public boolean teleportTo(PlayerRef ref, ResourceWorld rw) {
+        World w = Bukkit.getWorld(rw.worldName());
+        if (w == null) return false;
+        Player p = Bukkit.getPlayer(ref.uuid());
+        if (p == null) return false;
+        Location dest = "rtp".equalsIgnoreCase(rw.teleport().mode())
+            ? rtpFinder.findSafe(w, 5000)
+            : w.getSpawnLocation();
+        return p.teleport(dest);
     }
 }
