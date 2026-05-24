@@ -55,8 +55,8 @@ public final class OwwrCommandModule {
         this.history = history;
         this.cooldowns = cooldowns;
         this.teleportGui = new TeleportGui(this.teleport);
-        this.adminGui = new AdminGui(config);
         this.pregen = pregen;
+        this.adminGui = new AdminGui(config, pregen);
     }
 
     public void register() {
