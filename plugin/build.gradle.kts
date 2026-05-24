@@ -21,7 +21,8 @@ tasks {
         relocate("dev.triumphteam.gui", "net.onewaycraft.owwr.libs.gui")
         mergeServiceFiles()
         minimize {
-            exclude(project(":plugin"))
+            // platform-* contain classes loaded reflectively at runtime (schedulers,
+            // event listeners, command handlers); minimize would strip them.
             exclude(project(":platform-paper"))
             exclude(project(":platform-folia"))
         }
