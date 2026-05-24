@@ -27,14 +27,18 @@ public final class Schedule {
     }
 
     public static Schedule daily(LocalTime time) {
+        Objects.requireNonNull(time, "time");
         return new Schedule(ResetType.DAILY, time, null, 0, null);
     }
 
     public static Schedule weekly(DayOfWeek dow, LocalTime time) {
+        Objects.requireNonNull(dow, "dow");
+        Objects.requireNonNull(time, "time");
         return new Schedule(ResetType.WEEKLY, time, dow, 0, null);
     }
 
     public static Schedule monthly(int dayOfMonth, LocalTime time) {
+        Objects.requireNonNull(time, "time");
         if (dayOfMonth < 1 || dayOfMonth > 31) throw new IllegalArgumentException("dayOfMonth");
         return new Schedule(ResetType.MONTHLY, time, null, dayOfMonth, null);
     }
