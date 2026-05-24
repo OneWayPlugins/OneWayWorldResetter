@@ -12,7 +12,7 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        getLogger().info("OneWayWorldResetter " + getDescription().getVersion() + " starting up.");
+        getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " starting up.");
     }
 
     @Override
