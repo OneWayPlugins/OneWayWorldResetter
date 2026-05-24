@@ -6,6 +6,7 @@ import net.onewaycraft.owwr.core.teleport.PlayerRef;
 import net.onewaycraft.owwr.core.teleport.TeleportService;
 import net.onewaycraft.owwr.core.world.WorldLifecycleService;
 import net.onewaycraft.owwr.core.world.WorldOpResult;
+import net.onewaycraft.owwr.core.world.WorldRuntime;
 import net.onewaycraft.owwr.core.world.WorldSpec;
 
 import java.time.Duration;
@@ -14,18 +15,21 @@ import java.util.List;
 
 /**
  * @brief Reset in-place: evacua, unload, delete, recreate, verify.
+ *        Pausa autosave durante o reset se reset.pauseAutosave for true.
  */
 public final class InPlaceResetStrategy implements ResetStrategy {
 
     private final WorldLifecycleService worlds;
     private final TeleportService teleports;
     private final SeedPicker seedPicker;
+    private final WorldRuntime runtime;
 
     public InPlaceResetStrategy(WorldLifecycleService worlds, TeleportService teleports,
-                                SeedPicker seedPicker) {
+                                SeedPicker seedPicker, WorldRuntime runtime) {
         this.worlds = worlds;
         this.teleports = teleports;
         this.seedPicker = seedPicker;
+        this.runtime = runtime;
     }
 
     @Override public String id() { return "in-place"; }
@@ -45,6 +49,8 @@ public final class InPlaceResetStrategy implements ResetStrategy {
         }
 
         try {
+            if (rw.reset().pauseAutosave()) runtime.setAutosave(rw.worldName(), false);
+
             exec.run(ResetPhase.TELEPORT, () ->
                 teleports.evacuate(players, rw.teleport().destinationOnReset()) >= 0);
             exec.run(ResetPhase.UNLOAD,
@@ -58,10 +64,15 @@ public final class InPlaceResetStrategy implements ResetStrategy {
             });
             exec.run(ResetPhase.VERIFY, () -> worlds.worldExists(rw.worldName()));
 
+            if (rw.reset().pauseAutosave()) runtime.setAutosave(rw.worldName(), true);
+
             return new ResetResult(rw.id(), true, ResetPhase.COMPLETE,
                 Duration.between(start, Instant.now()),
                 exec.phaseDurations(), affected, null);
         } catch (PhaseExecutor.PhaseFailure f) {
+            if (rw.reset().pauseAutosave()) {
+                try { runtime.setAutosave(rw.worldName(), true); } catch (Exception ignored) {}
+            }
             return new ResetResult(rw.id(), false, f.phase(),
                 Duration.between(start, Instant.now()),
                 exec.phaseDurations(), affected, f.getMessage());

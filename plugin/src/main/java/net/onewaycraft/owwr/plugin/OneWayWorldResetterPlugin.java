@@ -67,8 +67,10 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
 
         TeleportService teleport = new BukkitTeleportService();
         SeedPicker seedPicker = new SeedPicker();
+        net.onewaycraft.owwr.core.world.WorldRuntime worldRuntime =
+            new net.onewaycraft.owwr.paper.world.BukkitWorldRuntime();
         Map<String, ResetStrategy> strategies = Map.of(
-            "in-place", new InPlaceResetStrategy(worldService, teleport, seedPicker),
+            "in-place", new InPlaceResetStrategy(worldService, teleport, seedPicker, worldRuntime),
             "double-buffered", new DoubleBufferedResetStrategy(
                 worldService, teleport, seedPicker,
                 new WorldRenamer(), getServer().getWorldContainer().toPath())
