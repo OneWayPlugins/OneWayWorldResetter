@@ -17,7 +17,7 @@ class GatesTest {
             Schedule.daily(java.time.LocalTime.NOON),
             List.of(),
             Map.of("min-tps", gateCfg, "max-players", gateCfg, "min-disk-gb", gateCfg),
-            true, true);
+            true, true, null);
         ResourceWorld rw = new ResourceWorld("id", "world_resource", Environment.NORMAL, true, true,
             new SeedConfig(SeedStrategy.RANDOM, List.of()),
             rc,

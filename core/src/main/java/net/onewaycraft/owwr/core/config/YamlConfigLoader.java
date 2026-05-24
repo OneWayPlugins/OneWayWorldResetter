@@ -106,7 +106,8 @@ public final class YamlConfigLoader implements ConfigLoader {
             warnings,
             Map.copyOf(gates),
             (Boolean) r.getOrDefault("pause-autosave", true),
-            (Boolean) r.getOrDefault("grace-warning", true)
+            (Boolean) r.getOrDefault("grace-warning", true),
+            null
         );
     }
 

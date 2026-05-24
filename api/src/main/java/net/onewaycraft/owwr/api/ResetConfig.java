@@ -6,6 +6,8 @@ import java.util.Objects;
 
 /**
  * @brief Configuração de reset por mundo.
+ *
+ * O campo {@code chunky} é opcional: quando null, a fase PREGEN é skipada.
  */
 public record ResetConfig(
     String strategy,
@@ -13,13 +15,15 @@ public record ResetConfig(
     List<Integer> warningsMinutes,
     Map<String, GateConfig> gates,
     boolean pauseAutosave,
-    boolean graceWarning
+    boolean graceWarning,
+    ChunkyConfig chunky                  // nullable
 ) {
     public ResetConfig {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(schedule, "schedule");
         warningsMinutes = List.copyOf(warningsMinutes);
         gates = Map.copyOf(gates);
+        // chunky may be null — opt-in feature
     }
 
     /**
