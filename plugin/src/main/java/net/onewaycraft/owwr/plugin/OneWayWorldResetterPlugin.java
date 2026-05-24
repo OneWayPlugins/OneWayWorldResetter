@@ -73,7 +73,16 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         SeedPicker seedPicker = new SeedPicker();
         net.onewaycraft.owwr.core.world.WorldRuntime worldRuntime =
             new net.onewaycraft.owwr.paper.world.BukkitWorldRuntime();
-        this.pregen = new NoopPregenService();
+        PregenService chunkyPregen = net.onewaycraft.owwr.integrations.chunky.ChunkyAdapterFactory.tryCreate(this, getLogger());
+        if (chunkyPregen == null) {
+            if (anyWorldHasChunkyEnabled()) {
+                getLogger().warning("Chunky integration enabled in config but Chunky plugin not found; pre-gen will be skipped.");
+            }
+            this.pregen = new NoopPregenService();
+        } else {
+            this.pregen = chunkyPregen;
+            getLogger().info("Chunky integration active.");
+        }
         Map<String, ResetStrategy> strategies = Map.of(
             "in-place", new PregenResetStrategyDecorator(
                 new InPlaceResetStrategy(worldService, teleport, seedPicker, worldRuntime),
@@ -165,6 +174,11 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         if (!getDataFolder().toPath().resolve("messages.yml").toFile().exists()) {
             saveResource("messages.yml", false);
         }
+    }
+
+    private boolean anyWorldHasChunkyEnabled() {
+        return config.worlds().stream()
+            .anyMatch(w -> w.reset().chunky() != null);
     }
 
     private void autoCreateConfiguredWorlds() {
