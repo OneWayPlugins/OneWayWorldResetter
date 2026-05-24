@@ -11,7 +11,7 @@ commands:
   owwr:
     description: OneWayWorldResetter admin commands.
     permission: owwr.admin
-    usage: /owwr reset <world>
+    usage: /owwr <reset|region reset> <world>
 
 permissions:
   owwr.admin:

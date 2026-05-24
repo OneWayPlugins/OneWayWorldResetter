@@ -44,6 +44,7 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
     private WorldLifecycleService worldService;
     private OwwrConfig config;
     private ResetService resetService;
+    private net.onewaycraft.owwr.core.region.RegionResetManager regionReset;
 
     @Override
     public void onEnable() {
@@ -85,6 +86,12 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
             new BukkitServerSnapshot(), state, history,
             new BukkitEventBus(), scheduler, getLogger());
 
+        regionReset = new net.onewaycraft.owwr.core.region.RegionResetManager(
+            getServer().getWorldContainer().toPath(),
+            scheduler,
+            new BukkitEventBus(),
+            getLogger());
+
         autoCreateConfiguredWorlds();
         resetService.resumePending();
         getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " started.");
@@ -100,6 +107,23 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd,
                              @NotNull String label, @NotNull String[] args) {
         if (!cmd.getName().equalsIgnoreCase("owwr")) return false;
+        if (args.length >= 1 && args[0].equalsIgnoreCase("region") && args.length >= 3 && args[1].equalsIgnoreCase("reset")) {
+            String worldId = args[2];
+            ResourceWorld rw = config.worlds().stream()
+                .filter(w -> w.id().equalsIgnoreCase(worldId))
+                .findFirst().orElse(null);
+            if (rw == null) {
+                sender.sendMessage("Unknown world: " + worldId);
+                return true;
+            }
+            if (!rw.regions().enabled() || rw.regions().list().isEmpty()) {
+                sender.sendMessage("Region reset not enabled or empty list for " + worldId);
+                return true;
+            }
+            regionReset.resetRegions(rw.id(), rw.worldName(), rw.regions().list());
+            sender.sendMessage("Region reset queued for " + worldId + " (" + rw.regions().list().size() + " regions)");
+            return true;
+        }
         if (args.length < 2 || !args[0].equalsIgnoreCase("reset")) {
             sender.sendMessage("Usage: /owwr reset <worldId> [dry-run|confirm]");
             return true;
