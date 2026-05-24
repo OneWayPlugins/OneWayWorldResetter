@@ -1,5 +1,9 @@
 package net.onewaycraft.owwr.plugin;
 
+import net.onewaycraft.owwr.core.platform.Platform;
+import net.onewaycraft.owwr.core.schedule.Scheduler;
+import net.onewaycraft.owwr.folia.schedule.FoliaScheduler;
+import net.onewaycraft.owwr.paper.schedule.PaperScheduler;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -10,13 +14,21 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public final class OneWayWorldResetterPlugin extends JavaPlugin {
 
+    private Scheduler scheduler;
+
     @Override
     public void onEnable() {
-        getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " starting up.");
+        Platform platform = PlatformDetector.detect();
+        getLogger().info("Platform detected: " + platform);
+        scheduler = (platform == Platform.FOLIA)
+            ? new FoliaScheduler(this)
+            : new PaperScheduler(this);
+        getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " started.");
     }
 
     @Override
     public void onDisable() {
+        if (scheduler != null) scheduler.shutdown();
         getLogger().info("OneWayWorldResetter shutting down.");
     }
 }
