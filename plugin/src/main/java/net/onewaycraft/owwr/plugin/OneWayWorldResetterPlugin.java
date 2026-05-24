@@ -11,8 +11,11 @@ import net.onewaycraft.owwr.core.preflight.DiskSpaceGate;
 import net.onewaycraft.owwr.core.preflight.OnlinePlayersGate;
 import net.onewaycraft.owwr.core.preflight.PreflightGate;
 import net.onewaycraft.owwr.core.preflight.TpsGate;
+import net.onewaycraft.owwr.core.pregen.NoopPregenService;
+import net.onewaycraft.owwr.core.pregen.PregenService;
 import net.onewaycraft.owwr.core.reset.DoubleBufferedResetStrategy;
 import net.onewaycraft.owwr.core.reset.InPlaceResetStrategy;
+import net.onewaycraft.owwr.core.reset.PregenResetStrategyDecorator;
 import net.onewaycraft.owwr.core.reset.ResetQueue;
 import net.onewaycraft.owwr.core.reset.ResetService;
 import net.onewaycraft.owwr.core.reset.ResetStrategy;
@@ -46,6 +49,7 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
     private ResetService resetService;
     private net.onewaycraft.owwr.core.region.RegionResetManager regionReset;
     private net.onewaycraft.owwr.core.schedule.ResetSchedulerLoop schedulerLoop;
+    private PregenService pregen;
 
     @Override
     public void onEnable() {
@@ -69,11 +73,16 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         SeedPicker seedPicker = new SeedPicker();
         net.onewaycraft.owwr.core.world.WorldRuntime worldRuntime =
             new net.onewaycraft.owwr.paper.world.BukkitWorldRuntime();
+        this.pregen = new NoopPregenService();
         Map<String, ResetStrategy> strategies = Map.of(
-            "in-place", new InPlaceResetStrategy(worldService, teleport, seedPicker, worldRuntime),
-            "double-buffered", new DoubleBufferedResetStrategy(
-                worldService, teleport, seedPicker,
-                new WorldRenamer(), getServer().getWorldContainer().toPath())
+            "in-place", new PregenResetStrategyDecorator(
+                new InPlaceResetStrategy(worldService, teleport, seedPicker, worldRuntime),
+                pregen),
+            "double-buffered", new PregenResetStrategyDecorator(
+                new DoubleBufferedResetStrategy(
+                    worldService, teleport, seedPicker,
+                    new WorldRenamer(), getServer().getWorldContainer().toPath()),
+                pregen)
         );
 
         Map<String, ResourceWorld> worldsById = config.worlds().stream()
