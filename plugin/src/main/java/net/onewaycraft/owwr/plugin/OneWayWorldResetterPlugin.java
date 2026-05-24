@@ -10,6 +10,7 @@ import net.onewaycraft.owwr.core.preflight.DiskSpaceGate;
 import net.onewaycraft.owwr.core.preflight.OnlinePlayersGate;
 import net.onewaycraft.owwr.core.preflight.PreflightGate;
 import net.onewaycraft.owwr.core.preflight.TpsGate;
+import net.onewaycraft.owwr.core.reset.DoubleBufferedResetStrategy;
 import net.onewaycraft.owwr.core.reset.InPlaceResetStrategy;
 import net.onewaycraft.owwr.core.reset.ResetQueue;
 import net.onewaycraft.owwr.core.reset.ResetService;
@@ -18,6 +19,7 @@ import net.onewaycraft.owwr.core.reset.SeedPicker;
 import net.onewaycraft.owwr.core.schedule.Scheduler;
 import net.onewaycraft.owwr.core.teleport.TeleportService;
 import net.onewaycraft.owwr.core.world.WorldLifecycleService;
+import net.onewaycraft.owwr.core.world.WorldRenamer;
 import net.onewaycraft.owwr.core.world.WorldSpec;
 import net.onewaycraft.owwr.folia.schedule.FoliaScheduler;
 import net.onewaycraft.owwr.paper.events.BukkitEventBus;
@@ -64,7 +66,10 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         TeleportService teleport = new BukkitTeleportService();
         SeedPicker seedPicker = new SeedPicker();
         Map<String, ResetStrategy> strategies = Map.of(
-            "in-place", new InPlaceResetStrategy(worldService, teleport, seedPicker)
+            "in-place", new InPlaceResetStrategy(worldService, teleport, seedPicker),
+            "double-buffered", new DoubleBufferedResetStrategy(
+                worldService, teleport, seedPicker,
+                new WorldRenamer(), getServer().getWorldContainer().toPath())
         );
 
         Map<String, ResourceWorld> worldsById = config.worlds().stream()
