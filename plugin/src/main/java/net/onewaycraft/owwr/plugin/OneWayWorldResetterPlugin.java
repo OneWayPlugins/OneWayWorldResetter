@@ -26,10 +26,7 @@ import net.onewaycraft.owwr.paper.events.BukkitEventBus;
 import net.onewaycraft.owwr.paper.preflight.BukkitServerSnapshot;
 import net.onewaycraft.owwr.paper.schedule.PaperScheduler;
 import net.onewaycraft.owwr.paper.teleport.BukkitTeleportService;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -92,6 +89,21 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
             new BukkitEventBus(),
             getLogger());
 
+        // Load messages and register Cloud command tree.
+        net.onewaycraft.owwr.api.MessageService messages;
+        try (InputStream m = Files.newInputStream(getDataFolder().toPath().resolve("messages.yml"))) {
+            messages = net.onewaycraft.owwr.core.messages.YamlMessageService.fromYaml(m);
+        } catch (IOException e) {
+            getLogger().severe("Failed to load messages.yml: " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        java.time.Duration cooldownDuration = java.time.Duration.ofSeconds(5);
+        new net.onewaycraft.owwr.plugin.commands.OwwrCommandModule(
+            this, resetService, config, teleport, messages, history,
+            new net.onewaycraft.owwr.plugin.commands.CooldownTracker(cooldownDuration)
+        ).register();
+
         autoCreateConfiguredWorlds();
         resetService.resumePending();
         getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " started.");
@@ -101,46 +113,6 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
     public void onDisable() {
         if (scheduler != null) scheduler.shutdown();
         getLogger().info("OneWayWorldResetter shutting down.");
-    }
-
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd,
-                             @NotNull String label, @NotNull String[] args) {
-        if (!cmd.getName().equalsIgnoreCase("owwr")) return false;
-        if (args.length >= 1 && args[0].equalsIgnoreCase("region") && args.length >= 3 && args[1].equalsIgnoreCase("reset")) {
-            String worldId = args[2];
-            ResourceWorld rw = config.worlds().stream()
-                .filter(w -> w.id().equalsIgnoreCase(worldId))
-                .findFirst().orElse(null);
-            if (rw == null) {
-                sender.sendMessage("Unknown world: " + worldId);
-                return true;
-            }
-            if (!rw.regions().enabled() || rw.regions().list().isEmpty()) {
-                sender.sendMessage("Region reset not enabled or empty list for " + worldId);
-                return true;
-            }
-            regionReset.resetRegions(rw.id(), rw.worldName(), rw.regions().list());
-            sender.sendMessage("Region reset queued for " + worldId + " (" + rw.regions().list().size() + " regions)");
-            return true;
-        }
-        if (args.length < 2 || !args[0].equalsIgnoreCase("reset")) {
-            sender.sendMessage("Usage: /owwr reset <worldId> [dry-run|confirm]");
-            return true;
-        }
-        if (resetService == null) {
-            sender.sendMessage("ResetService not yet ready.");
-            return true;
-        }
-        boolean dry = args.length >= 3 && args[2].equalsIgnoreCase("dry-run");
-        boolean confirm = args.length >= 3 && args[2].equalsIgnoreCase("confirm");
-        if (!dry && !confirm) {
-            sender.sendMessage("Type /owwr reset " + args[1] + " confirm to proceed (destructive).");
-            return true;
-        }
-        resetService.request(args[1], dry);
-        sender.sendMessage("Queued reset for " + args[1] + (dry ? " (dry-run)" : ""));
-        return true;
     }
 
     private void saveDefaultConfigIfMissing() {
