@@ -14,7 +14,8 @@ dependencyResolutionManagement {
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
         maven("https://repo.incendo.org/snapshots/") { name = "incendo" }
-        maven("https://repo.triumphteam.dev/snapshots/") { name = "triumph" }
+        maven("https://repo.triumphteam.dev/snapshots/") { name = "triumph-snapshots" }
+        maven("https://repo.triumphteam.dev/releases/") { name = "triumph-releases" }
         maven("https://repo.extendedclip.com/releases/") { name = "extendedclip" }
         maven("https://jitpack.io") { name = "jitpack" }
     }
