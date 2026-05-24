@@ -1,0 +1,16 @@
+prefix: "&#00FF00[OWWR]&r "
+reset:
+  starting: "{prefix}Starting reset of &#FFAA00{world}&r in {minutes} minutes."
+  warning: "{prefix}Reset of &#FFAA00{world}&r in {minutes} minutes!"
+  done: "{prefix}Reset of {world} complete."
+  failed: "{prefix}&cReset of {world} failed: {reason}"
+  cooldown: "{prefix}&cYou must wait {seconds}s before teleporting again."
+teleport:
+  no-world: "{prefix}&cNo such resource world: {world}"
+  confirmed: "{prefix}Teleporting to {world}..."
+errors:
+  no-permission: "&cYou lack permission to use this command."
+  unknown-command: "&cUnknown subcommand. Try /owwr help."
+admin:
+  reload-ok: "{prefix}Config reloaded."
+  reset-confirm: "{prefix}Type /owwr reset {world} confirm to confirm destructive reset."

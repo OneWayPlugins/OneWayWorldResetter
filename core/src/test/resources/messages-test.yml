@@ -1,0 +1,6 @@
+prefix: "&#00FF00[OWWR] "
+reset:
+  starting: "{prefix}Starting reset of &#FFAA00{world}&r in {minutes} min"
+  done: "{prefix}Reset complete."
+errors:
+  no-permission: "&cYou lack permission."
