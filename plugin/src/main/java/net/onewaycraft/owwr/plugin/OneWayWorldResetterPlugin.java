@@ -42,6 +42,7 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
     private OwwrConfig config;
     private ResetService resetService;
     private net.onewaycraft.owwr.core.region.RegionResetManager regionReset;
+    private net.onewaycraft.owwr.core.schedule.ResetSchedulerLoop schedulerLoop;
 
     @Override
     public void onEnable() {
@@ -106,11 +107,17 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
 
         autoCreateConfiguredWorlds();
         resetService.resumePending();
+
+        schedulerLoop = new net.onewaycraft.owwr.core.schedule.ResetSchedulerLoop(
+            scheduler, resetService, worldsById, java.time.ZoneId.systemDefault(), getLogger());
+        schedulerLoop.start();
+
         getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " started.");
     }
 
     @Override
     public void onDisable() {
+        if (schedulerLoop != null) schedulerLoop.stop();
         if (scheduler != null) scheduler.shutdown();
         getLogger().info("OneWayWorldResetter shutting down.");
     }

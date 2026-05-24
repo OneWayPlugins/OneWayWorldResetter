@@ -49,6 +49,9 @@ public final class Schedule {
 
     public ResetType type() { return type; }
 
+    /** @brief Cron expression (only non-null for type=CRON; used by CronEvaluator). */
+    public String cronExpression() { return cronExpression; }
+
     /**
      * @brief Próximo Instant em que este Schedule dispara, estritamente após {@code now}.
      * @throws UnsupportedOperationException para CRON (implementado na Fase 9).
