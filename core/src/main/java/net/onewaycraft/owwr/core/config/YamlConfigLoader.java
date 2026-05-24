@@ -18,6 +18,7 @@ public final class YamlConfigLoader implements ConfigLoader {
     @SuppressWarnings("unchecked")
     public OwwrConfig load(InputStream source) {
         Map<String, Object> root = new Yaml().load(source);
+        if (root == null) root = Map.of();
         Map<String, Object> settingsMap = (Map<String, Object>) root.getOrDefault("settings", Map.of());
         OwwrConfig.Settings settings = new OwwrConfig.Settings(
             (String) settingsMap.getOrDefault("locale", "en"),
@@ -36,15 +37,16 @@ public final class YamlConfigLoader implements ConfigLoader {
 
     @SuppressWarnings("unchecked")
     private ResourceWorld parseWorld(String id, Map<String, Object> w) {
+        String worldName = require(w, "world-name", id);
         SeedConfig seed = parseSeed((Map<String, Object>) w.getOrDefault("seed", Map.of()));
-        ResetConfig reset = parseReset((Map<String, Object>) w.getOrDefault("reset", Map.of()));
+        ResetConfig reset = parseReset((Map<String, Object>) w.getOrDefault("reset", Map.of()), id);
         TeleportConfig tp = parseTeleport((Map<String, Object>) w.getOrDefault("teleport", Map.of()));
         WorldSettings ws = parseWorldSettings((Map<String, Object>) w.getOrDefault("world-settings", Map.of()));
         ResourceWorld.RegionConfig regions = parseRegions((Map<String, Object>) w.getOrDefault("regions", Map.of()));
 
         return new ResourceWorld(
             id,
-            (String) w.get("world-name"),
+            worldName,
             Environment.valueOf(((String) w.getOrDefault("environment", "NORMAL")).toUpperCase()),
             (Boolean) w.getOrDefault("enabled", true),
             (Boolean) w.getOrDefault("auto-create", true),
@@ -53,9 +55,18 @@ public final class YamlConfigLoader implements ConfigLoader {
             tp,
             ws,
             regions,
-            mapBoolean((Map<String, Object>) w.getOrDefault("copy-regions", Map.of())),
+            mapBooleanLowercase((Map<String, Object>) w.getOrDefault("copy-regions", Map.of())),
             (Map<String, Object>) w.getOrDefault("notifications", Map.of())
         );
+    }
+
+    private static String require(Map<String, Object> map, String key, String worldId) {
+        Object v = map.get(key);
+        if (v == null) {
+            throw new IllegalArgumentException(
+                "resource-worlds." + worldId + "." + key + " is required");
+        }
+        return v.toString();
     }
 
     private SeedConfig parseSeed(Map<String, Object> s) {
@@ -67,16 +78,21 @@ public final class YamlConfigLoader implements ConfigLoader {
     }
 
     @SuppressWarnings("unchecked")
-    private ResetConfig parseReset(Map<String, Object> r) {
+    private ResetConfig parseReset(Map<String, Object> r, String worldId) {
         Map<String, Object> schedMap = (Map<String, Object>) r.getOrDefault("schedule", Map.of());
-        Schedule schedule = parseSchedule(schedMap);
+        Schedule schedule = parseSchedule(schedMap, worldId);
 
         Map<String, Object> gatesRaw = (Map<String, Object>) r.getOrDefault("gates", Map.of());
         Map<String, ResetConfig.GateConfig> gates = new LinkedHashMap<>();
         for (Map.Entry<String, Object> g : gatesRaw.entrySet()) {
             Map<String, Object> gv = (Map<String, Object>) g.getValue();
+            Object value = gv.get("value");
+            if (value == null) {
+                throw new IllegalArgumentException(
+                    "resource-worlds." + worldId + ".reset.gates." + g.getKey() + ".value is required");
+            }
             gates.put(g.getKey(), new ResetConfig.GateConfig(
-                ((Number) gv.get("value")).doubleValue(),
+                ((Number) value).doubleValue(),
                 (String) gv.getOrDefault("on-fail", "delay")
             ));
         }
@@ -94,19 +110,21 @@ public final class YamlConfigLoader implements ConfigLoader {
         );
     }
 
-    private Schedule parseSchedule(Map<String, Object> s) {
+    private Schedule parseSchedule(Map<String, Object> s, String worldId) {
         String type = ((String) s.getOrDefault("type", "daily")).toLowerCase();
         return switch (type) {
-            case "daily" -> Schedule.daily(LocalTime.parse((String) s.get("time")));
+            case "daily" -> Schedule.daily(LocalTime.parse(require(s, "time", worldId)));
             case "weekly" -> Schedule.weekly(
-                DayOfWeek.of(((Number) s.get("day")).intValue()),
-                LocalTime.parse((String) s.get("time"))
+                DayOfWeek.of(((Number) Objects.requireNonNull(s.get("day"),
+                    () -> "resource-worlds." + worldId + ".reset.schedule.day is required")).intValue()),
+                LocalTime.parse(require(s, "time", worldId))
             );
             case "monthly" -> Schedule.monthly(
-                ((Number) s.get("day")).intValue(),
-                LocalTime.parse((String) s.get("time"))
+                ((Number) Objects.requireNonNull(s.get("day"),
+                    () -> "resource-worlds." + worldId + ".reset.schedule.day is required")).intValue(),
+                LocalTime.parse(require(s, "time", worldId))
             );
-            case "cron" -> Schedule.cron((String) s.get("cron"));
+            case "cron" -> Schedule.cron(require(s, "cron", worldId));
             default -> throw new IllegalArgumentException("unknown schedule type: " + type);
         };
     }
@@ -144,7 +162,8 @@ public final class YamlConfigLoader implements ConfigLoader {
 
     @SuppressWarnings("unchecked")
     private ResourceWorld.RegionConfig parseRegions(Map<String, Object> r) {
-        List<Map<String, Object>> raw = (List<Map<String, Object>>) r.getOrDefault("list", List.of());
+        List<Map<String, Object>> raw = (List<Map<String, Object>>) r.getOrDefault(
+            "list", Collections.<Map<String, Object>>emptyList());
         List<ResourceWorld.RegionConfig.RegionCoord> coords = raw.stream()
             .map(m -> new ResourceWorld.RegionConfig.RegionCoord(
                 ((Number) m.get("x")).intValue(),
@@ -153,9 +172,9 @@ public final class YamlConfigLoader implements ConfigLoader {
         return new ResourceWorld.RegionConfig((Boolean) r.getOrDefault("enabled", false), coords);
     }
 
-    private Map<String, Boolean> mapBoolean(Map<String, Object> in) {
+    private Map<String, Boolean> mapBooleanLowercase(Map<String, Object> in) {
         Map<String, Boolean> out = new LinkedHashMap<>();
-        in.forEach((k, v) -> out.put(k, (Boolean) v));
+        in.forEach((k, v) -> out.put(k.toLowerCase(Locale.ROOT), (Boolean) v));
         return Map.copyOf(out);
     }
 }
