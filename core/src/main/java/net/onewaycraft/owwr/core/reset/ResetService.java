@@ -7,12 +7,14 @@ import net.onewaycraft.owwr.core.persistence.StateRepository;
 import net.onewaycraft.owwr.core.preflight.PreflightGate;
 import net.onewaycraft.owwr.core.preflight.ResetContext;
 import net.onewaycraft.owwr.core.preflight.ServerSnapshot;
+import net.onewaycraft.owwr.core.pregen.PregenService;
 import net.onewaycraft.owwr.core.schedule.Scheduler;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -37,6 +39,7 @@ public final class ResetService {
     private final EventBus events;
     private final Scheduler scheduler;
     private final Logger logger;
+    private final PregenService pregen;
 
     public ResetService(
         ResetQueue queue,
@@ -48,7 +51,8 @@ public final class ResetService {
         HistoryRepository history,
         EventBus events,
         Scheduler scheduler,
-        Logger logger
+        Logger logger,
+        PregenService pregen
     ) {
         this.queue = queue;
         this.worlds = worlds;
@@ -60,6 +64,7 @@ public final class ResetService {
         this.events = events;
         this.scheduler = scheduler;
         this.logger = logger;
+        this.pregen = pregen;
     }
 
     public void request(String worldId, boolean dryRun) {
@@ -89,12 +94,49 @@ public final class ResetService {
     public void resumePending() {
         for (String id : worlds.keySet()) {
             state.load(id).ifPresent(s -> {
-                if (s.phase() != ResetPhase.COMPLETE && s.phase() != ResetPhase.FAILED) {
-                    logger.warning("resuming pending reset for " + id + " phase=" + s.phase());
-                    scheduler.runDelayedGlobal(Duration.ofSeconds(60),
-                        () -> request(id, false));
+                if (s.phase() == ResetPhase.COMPLETE || s.phase() == ResetPhase.FAILED) return;
+
+                if (s.phase() == ResetPhase.PREGEN) {
+                    handlePregenResume(id, s);
+                    return;
                 }
+
+                logger.warning("resuming pending reset for " + id + " phase=" + s.phase());
+                scheduler.runDelayedGlobal(Duration.ofSeconds(60),
+                    () -> request(id, false));
             });
+        }
+    }
+
+    private void handlePregenResume(String worldId, ResetState s) {
+        ResourceWorld rw = worlds.get(worldId);
+        if (rw == null) return;
+        Optional<PregenProgress> prog = pregen.progressOf(rw.worldName());
+        if (prog.isEmpty()) {
+            logger.warning("PREGEN state persisted but Chunky reports no progress; re-requesting reset for " + worldId);
+            scheduler.runDelayedGlobal(Duration.ofSeconds(60), () -> request(worldId, false));
+            return;
+        }
+        PregenProgress p = prog.get();
+        switch (p.state()) {
+            case RUNNING, PAUSED -> {
+                logger.info("Resuming pre-gen for " + worldId + " (state=" + p.state() + ", " + (long) p.percent() + "%). Re-checking in 30s.");
+                scheduler.runDelayedGlobal(Duration.ofSeconds(30), this::resumePending);
+            }
+            case COMPLETED -> {
+                logger.info("Pre-gen of " + worldId + " completed while server was down. Marking reset complete.");
+                ResetResult result = new ResetResult(worldId, true, ResetPhase.COMPLETE,
+                    Duration.ZERO, Map.of(), 0, null);
+                state.clear(worldId);
+                history.append(new ResetRecord(worldId, s.startedAt(),
+                    Duration.between(s.startedAt(), Instant.now()),
+                    true, ResetPhase.COMPLETE, 0, null));
+                events.fire(new PostResetEvent(result));
+            }
+            case FAILED, IDLE -> {
+                logger.warning("Pre-gen of " + worldId + " ended with state " + p.state() + " while server was down. Re-requesting reset.");
+                scheduler.runDelayedGlobal(Duration.ofSeconds(60), () -> request(worldId, false));
+            }
         }
     }
 

@@ -105,7 +105,7 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         resetService = new ResetService(
             queue, worldsById, strategies, gates,
             new BukkitServerSnapshot(), state, history,
-            new BukkitEventBus(), scheduler, getLogger());
+            new BukkitEventBus(), scheduler, getLogger(), pregen);
 
         regionReset = new net.onewaycraft.owwr.core.region.RegionResetManager(
             getServer().getWorldContainer().toPath(),
@@ -137,7 +137,8 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
 
         // Register public API via ServicesManager.
         OwwrServiceImpl api = new OwwrServiceImpl(
-            config, resetService, state, history, java.time.ZoneId.systemDefault());
+            config, resetService, state, history,
+            java.time.ZoneId.systemDefault(), pregen);
         getServer().getServicesManager().register(
             OwwrService.class, api, this, ServicePriority.Normal);
 

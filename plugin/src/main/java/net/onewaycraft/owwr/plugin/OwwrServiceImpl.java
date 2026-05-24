@@ -3,6 +3,7 @@ package net.onewaycraft.owwr.plugin;
 import net.onewaycraft.owwr.api.*;
 import net.onewaycraft.owwr.core.persistence.HistoryRepository;
 import net.onewaycraft.owwr.core.persistence.StateRepository;
+import net.onewaycraft.owwr.core.pregen.PregenService;
 import net.onewaycraft.owwr.core.reset.ResetService;
 import net.onewaycraft.owwr.core.schedule.CronEvaluator;
 
@@ -18,14 +19,17 @@ public final class OwwrServiceImpl implements OwwrService {
     private final StateRepository state;
     private final HistoryRepository history;
     private final ZoneId zone;
+    private final PregenService pregen;
 
     public OwwrServiceImpl(OwwrConfig config, ResetService reset,
-                           StateRepository state, HistoryRepository history, ZoneId zone) {
+                           StateRepository state, HistoryRepository history,
+                           ZoneId zone, PregenService pregen) {
         this.config = config;
         this.reset = reset;
         this.state = state;
         this.history = history;
         this.zone = zone;
+        this.pregen = pregen;
     }
 
     @Override public List<ResourceWorld> worlds() { return config.worlds(); }
@@ -51,5 +55,14 @@ public final class OwwrServiceImpl implements OwwrService {
     @Override
     public List<ResetRecord> recentHistory(int limit) {
         return history.recent(limit);
+    }
+
+    @Override
+    public Optional<PregenProgress> pregenProgressOf(String worldId) {
+        ResourceWorld rw = config.worlds().stream()
+            .filter(w -> w.id().equalsIgnoreCase(worldId))
+            .findFirst().orElse(null);
+        if (rw == null) return Optional.empty();
+        return pregen.progressOf(rw.worldName());
     }
 }
