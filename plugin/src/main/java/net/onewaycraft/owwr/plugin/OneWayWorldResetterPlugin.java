@@ -26,6 +26,7 @@ import net.onewaycraft.owwr.paper.events.BukkitEventBus;
 import net.onewaycraft.owwr.paper.preflight.BukkitServerSnapshot;
 import net.onewaycraft.owwr.paper.schedule.PaperScheduler;
 import net.onewaycraft.owwr.paper.teleport.BukkitTeleportService;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -111,6 +112,17 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         schedulerLoop = new net.onewaycraft.owwr.core.schedule.ResetSchedulerLoop(
             scheduler, resetService, worldsById, java.time.ZoneId.systemDefault(), getLogger());
         schedulerLoop.start();
+
+        try {
+            if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                new net.onewaycraft.owwr.integrations.papi.OwwrExpansion(
+                    config, history, getPluginMeta().getVersion().toString()
+                ).register();
+                getLogger().info("PlaceholderAPI expansion registered.");
+            }
+        } catch (Throwable t) {
+            getLogger().warning("Failed to register PAPI expansion: " + t.getMessage());
+        }
 
         getLogger().info("OneWayWorldResetter " + getPluginMeta().getVersion() + " started.");
     }
