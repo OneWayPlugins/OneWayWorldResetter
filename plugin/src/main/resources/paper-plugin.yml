@@ -1,0 +1,8 @@
+name: OneWayWorldResetter
+version: '${version}'
+main: net.onewaycraft.owwr.plugin.OneWayWorldResetterPlugin
+api-version: '1.21'
+load: STARTUP
+authors: [OneWayCraft]
+description: Reset agendado de resource worlds com suporte Paper e Folia.
+website: https://github.com/onewaycraft/OneWayWorldResetter
