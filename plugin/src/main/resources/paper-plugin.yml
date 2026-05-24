@@ -7,6 +7,12 @@ authors: [OneWayCraft]
 description: Reset agendado de resource worlds com suporte Paper e Folia.
 website: https://github.com/onewaycraft/OneWayWorldResetter
 
+commands:
+  owwr:
+    description: OneWayWorldResetter admin commands.
+    permission: owwr.admin
+    usage: /owwr reset <world>
+
 permissions:
   owwr.admin:
     description: Acesso administrativo total (/owwr).
