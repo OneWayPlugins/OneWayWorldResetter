@@ -1,15 +1,18 @@
 package net.onewaycraft.owwr.core.reset;
 
 import net.onewaycraft.owwr.api.ChunkyConfig;
+import net.onewaycraft.owwr.api.PregenProgress;
 import net.onewaycraft.owwr.api.ResetPhase;
 import net.onewaycraft.owwr.api.ResetResult;
 import net.onewaycraft.owwr.api.ResourceWorld;
+import net.onewaycraft.owwr.core.notify.NotificationService;
 import net.onewaycraft.owwr.core.pregen.PregenObserver;
 import net.onewaycraft.owwr.core.pregen.PregenService;
 import net.onewaycraft.owwr.core.pregen.PregenSpec;
 import net.onewaycraft.owwr.core.preflight.ResetContext;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,10 +35,17 @@ public final class PregenResetStrategyDecorator implements ResetStrategy {
 
     private final ResetStrategy wrapped;
     private final PregenService pregen;
+    private final NotificationService notifications;  // nullable
 
     public PregenResetStrategyDecorator(ResetStrategy wrapped, PregenService pregen) {
+        this(wrapped, pregen, null);
+    }
+
+    public PregenResetStrategyDecorator(ResetStrategy wrapped, PregenService pregen,
+                                         NotificationService notifications) {
         this.wrapped = Objects.requireNonNull(wrapped, "wrapped");
         this.pregen = Objects.requireNonNull(pregen, "pregen");
+        this.notifications = notifications;
     }
 
     @Override
@@ -65,10 +75,32 @@ public final class PregenResetStrategyDecorator implements ResetStrategy {
             Duration.ofMinutes(chunky.maxDurationMinutes()),
             chunky.notifications());
 
+        Map<String, Boolean> notif = chunky.notifications();
+        final boolean bossbarEnabled = Boolean.TRUE.equals(notif.get("bossbar"));
+        final boolean actionbarEnabled = Boolean.TRUE.equals(notif.get("actionbar"));
+        final boolean discordEnabled = Boolean.TRUE.equals(notif.get("discord"));
+
+        if (notifications != null && (bossbarEnabled || actionbarEnabled)) {
+            notifications.broadcast(rw.worldName(),
+                "Pre-gen iniciado para " + rw.id(),
+                bossbarEnabled, actionbarEnabled, false);
+        }
+
         AtomicReference<String> failureReason = new AtomicReference<>();
+        // Discord webhook integration deferred to a follow-up — keeps core decoupled from integrations.
         PregenObserver observer = new PregenObserver() {
             @Override public void onFailed(String reason) {
                 failureReason.compareAndSet(null, reason);
+                if (discordEnabled && notifications != null) {
+                    notifications.broadcast(rw.worldName(),
+                        "Pre-gen failed: " + reason, false, true, false);
+                }
+            }
+            @Override public void onComplete(PregenProgress p) {
+                if (discordEnabled && notifications != null) {
+                    notifications.broadcast(rw.worldName(),
+                        "Pre-gen completed", false, true, false);
+                }
             }
         };
 
@@ -77,10 +109,16 @@ public final class PregenResetStrategyDecorator implements ResetStrategy {
 
         String hardFailure = failureReason.get();
         if (hardFailure != null) {
+            if (notifications != null) {
+                notifications.clear(rw.worldName());
+            }
             return failResult(inner, "pregen failed: " + hardFailure);
         }
         if (!completed) {
             handle.cancel();
+            if (notifications != null) {
+                notifications.clear(rw.worldName());
+            }
             if ("warning".equals(chunky.failureBehavior())) {
                 return warningResult(inner, "pregen-timed-out");
             }
@@ -88,6 +126,9 @@ public final class PregenResetStrategyDecorator implements ResetStrategy {
         }
 
         // Success: rebuild result with PREGEN phase duration recorded (unknown, so omit).
+        if (notifications != null) {
+            notifications.clear(rw.worldName());
+        }
         return inner;
     }
 

@@ -4,6 +4,7 @@ import net.onewaycraft.owwr.api.ChunkyConfig;
 import net.onewaycraft.owwr.api.MessageService;
 import net.onewaycraft.owwr.api.OwwrConfig;
 import net.onewaycraft.owwr.api.PregenProgress;
+import net.onewaycraft.owwr.api.PregenState;
 import net.onewaycraft.owwr.api.ResourceWorld;
 import net.onewaycraft.owwr.core.persistence.HistoryRepository;
 import net.onewaycraft.owwr.core.pregen.PregenObserver;
@@ -270,6 +271,23 @@ public final class OwwrCommandModule {
     }
 
     private void doTeleport(Player p, ResourceWorld w) {
+        ChunkyConfig chunky = w.reset().chunky();
+        if (chunky != null && chunky.blockTeleportDuringPregen()) {
+            Optional<PregenProgress> progress = pregen.progressOf(w.worldName());
+            if (progress.isPresent()
+                && (progress.get().state() == PregenState.RUNNING
+                    || progress.get().state() == PregenState.PAUSED)) {
+                PregenProgress pp = progress.get();
+                String etaText = pp.eta().map(Duration::toString).orElse("?");
+                p.sendMessage(messages.resolve("teleport.pregen-in-progress",
+                    Map.of(
+                        "world", w.id(),
+                        "percent", String.format("%.1f", pp.percent()),
+                        "eta", etaText)));
+                return;
+            }
+        }
+
         teleport.teleportTo(new PlayerRef(p.getUniqueId(), p.getName()), w);
         cooldowns.markUsed(p.getUniqueId());
         p.sendMessage(messages.resolve("teleport.confirmed", Map.of("world", w.id())));

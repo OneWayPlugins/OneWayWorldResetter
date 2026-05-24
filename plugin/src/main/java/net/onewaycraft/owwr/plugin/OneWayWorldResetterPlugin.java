@@ -25,8 +25,10 @@ import net.onewaycraft.owwr.core.teleport.TeleportService;
 import net.onewaycraft.owwr.core.world.WorldLifecycleService;
 import net.onewaycraft.owwr.core.world.WorldRenamer;
 import net.onewaycraft.owwr.core.world.WorldSpec;
+import net.onewaycraft.owwr.core.notify.NotificationService;
 import net.onewaycraft.owwr.folia.schedule.FoliaScheduler;
 import net.onewaycraft.owwr.paper.events.BukkitEventBus;
+import net.onewaycraft.owwr.paper.notify.BukkitNotificationService;
 import net.onewaycraft.owwr.paper.preflight.BukkitServerSnapshot;
 import net.onewaycraft.owwr.paper.schedule.PaperScheduler;
 import net.onewaycraft.owwr.paper.teleport.BukkitTeleportService;
@@ -83,15 +85,16 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
             this.pregen = chunkyPregen;
             getLogger().info("Chunky integration active.");
         }
+        NotificationService notifications = new BukkitNotificationService();
         Map<String, ResetStrategy> strategies = Map.of(
             "in-place", new PregenResetStrategyDecorator(
                 new InPlaceResetStrategy(worldService, teleport, seedPicker, worldRuntime),
-                pregen),
+                pregen, notifications),
             "double-buffered", new PregenResetStrategyDecorator(
                 new DoubleBufferedResetStrategy(
                     worldService, teleport, seedPicker,
                     new WorldRenamer(), getServer().getWorldContainer().toPath()),
-                pregen)
+                pregen, notifications)
         );
 
         Map<String, ResourceWorld> worldsById = config.worlds().stream()

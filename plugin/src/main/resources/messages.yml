@@ -8,6 +8,14 @@ reset:
 teleport:
   no-world: "{prefix}&cNo such resource world: {world}"
   confirmed: "{prefix}Teleporting to {world}..."
+  pregen-in-progress: "{prefix}&eWorld {world} ainda sendo pré-gerado ({percent}%). Tente novamente em {eta}."
+chunky:
+  starting: "{prefix}Iniciando pré-geração de {world} ({chunks} chunks)."
+  progress: "{prefix}Pre-gen de {world}: {percent}% ({done}/{total})."
+  completed: "{prefix}Pre-gen de {world} concluído em {duration}."
+  timed-out: "{prefix}&ePre-gen de {world} atingiu o limite de tempo; reset concluído com aviso."
+  failed: "{prefix}&cPre-gen de {world} falhou: {reason}"
+  cancelled: "{prefix}Pre-gen de {world} cancelado."
 errors:
   no-permission: "&cYou lack permission to use this command."
   unknown-command: "&cUnknown subcommand. Try /owwr help."
