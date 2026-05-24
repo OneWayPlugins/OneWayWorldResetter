@@ -19,6 +19,7 @@ permissions:
       owwr.command.status: true
       owwr.command.region: true
       owwr.command.gui: true
+      owwr.command.chunky: true
   owwr.tp:
     description: Permite usar /resource [mundo].
     default: true

@@ -1,9 +1,14 @@
 package net.onewaycraft.owwr.plugin.commands;
 
+import net.onewaycraft.owwr.api.ChunkyConfig;
 import net.onewaycraft.owwr.api.MessageService;
 import net.onewaycraft.owwr.api.OwwrConfig;
+import net.onewaycraft.owwr.api.PregenProgress;
 import net.onewaycraft.owwr.api.ResourceWorld;
 import net.onewaycraft.owwr.core.persistence.HistoryRepository;
+import net.onewaycraft.owwr.core.pregen.PregenObserver;
+import net.onewaycraft.owwr.core.pregen.PregenService;
+import net.onewaycraft.owwr.core.pregen.PregenSpec;
 import net.onewaycraft.owwr.core.reset.ResetService;
 import net.onewaycraft.owwr.core.teleport.PlayerRef;
 import net.onewaycraft.owwr.core.teleport.TeleportService;
@@ -18,8 +23,10 @@ import org.incendo.cloud.paper.LegacyPaperCommandManager;
 import org.incendo.cloud.parser.standard.StringParser;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public final class OwwrCommandModule {
 
@@ -32,10 +39,12 @@ public final class OwwrCommandModule {
     private final CooldownTracker cooldowns;
     private final TeleportGui teleportGui;
     private final AdminGui adminGui;
+    private final PregenService pregen;
 
     public OwwrCommandModule(Plugin plugin, ResetService reset, OwwrConfig config,
                              TeleportService teleport, MessageService messages,
-                             HistoryRepository history, CooldownTracker cooldowns) {
+                             HistoryRepository history, CooldownTracker cooldowns,
+                             PregenService pregen) {
         this.manager = LegacyPaperCommandManager.createNative(plugin, ExecutionCoordinator.simpleCoordinator());
         try { this.manager.registerBrigadier(); } catch (Throwable ignored) {}
         this.reset = reset;
@@ -47,11 +56,13 @@ public final class OwwrCommandModule {
         this.cooldowns = cooldowns;
         this.teleportGui = new TeleportGui(this.teleport);
         this.adminGui = new AdminGui(config);
+        this.pregen = pregen;
     }
 
     public void register() {
         registerOwwrAdmin();
         registerResource();
+        registerChunky();
     }
 
     private void registerOwwrAdmin() {
@@ -61,7 +72,7 @@ public final class OwwrCommandModule {
         var root = manager.commandBuilder("owwr").permission("owwr.admin");
 
         manager.command(root.literal("help").handler(c ->
-            c.sender().sendMessage("/owwr help | gui | reload | reset <world> [confirm|dry-run] | history | status | tp [world]")));
+            c.sender().sendMessage("/owwr help | gui | reload | reset <world> [confirm|dry-run] | history | status | tp [world] | chunky <status|start|cancel|pause|resume> <world>")));
 
         manager.command(root.literal("gui").permission("owwr.command.gui")
             .senderType(Player.class)
@@ -126,6 +137,106 @@ public final class OwwrCommandModule {
                 String world = c.getOrDefault("world", (String) null);
                 handleTeleport(p, world);
             }));
+    }
+
+    private void registerChunky() {
+        BlockingSuggestionProvider.Strings<CommandSender> chunkyWorldIds = (ctx, in) ->
+            config.worlds().stream()
+                .filter(w -> w.reset().chunky() != null)
+                .map(ResourceWorld::id).toList();
+
+        var chunky = manager.commandBuilder("owwr")
+            .literal("chunky")
+            .permission("owwr.command.chunky");
+
+        manager.command(chunky.literal("status")
+            .required("world", StringParser.stringParser(), chunkyWorldIds)
+            .handler(c -> {
+                String worldId = c.get("world");
+                ResourceWorld rw = resolveWorld(worldId);
+                if (rw == null) {
+                    c.sender().sendMessage("Unknown world: " + worldId);
+                    return;
+                }
+                Optional<PregenProgress> p = pregen.progressOf(rw.worldName());
+                if (p.isEmpty()) {
+                    c.sender().sendMessage("Pre-gen idle for " + worldId);
+                } else {
+                    PregenProgress pp = p.get();
+                    c.sender().sendMessage(String.format(
+                        "Pre-gen %s for %s: %.1f%% (%d/%d), elapsed=%s",
+                        pp.state(), worldId, pp.percent(),
+                        pp.chunksDone(), pp.chunksTotal(), pp.elapsed()));
+                }
+            }));
+
+        manager.command(chunky.literal("start")
+            .required("world", StringParser.stringParser(), chunkyWorldIds)
+            .handler(c -> {
+                String worldId = c.get("world");
+                ResourceWorld rw = resolveWorld(worldId);
+                if (rw == null) {
+                    c.sender().sendMessage("Unknown world: " + worldId);
+                    return;
+                }
+                ChunkyConfig cfg = rw.reset().chunky();
+                if (cfg == null) {
+                    c.sender().sendMessage("Chunky pre-gen not enabled in config for " + worldId);
+                    return;
+                }
+                PregenSpec spec = new PregenSpec(
+                    rw.worldName(), cfg.shape(),
+                    cfg.centerX(), cfg.centerZ(), cfg.radius(),
+                    Duration.ofMinutes(cfg.maxDurationMinutes()),
+                    cfg.notifications());
+                pregen.start(spec, PregenObserver.noop());
+                c.sender().sendMessage("Pre-gen started for " + worldId);
+            }));
+
+        manager.command(chunky.literal("cancel")
+            .required("world", StringParser.stringParser(), chunkyWorldIds)
+            .handler(c -> {
+                String worldId = c.get("world");
+                ResourceWorld rw = resolveWorld(worldId);
+                if (rw == null) {
+                    c.sender().sendMessage("Unknown world: " + worldId);
+                    return;
+                }
+                pregen.cancel(rw.worldName());
+                c.sender().sendMessage("Pre-gen cancelled for " + worldId);
+            }));
+
+        manager.command(chunky.literal("pause")
+            .required("world", StringParser.stringParser(), chunkyWorldIds)
+            .handler(c -> {
+                String worldId = c.get("world");
+                ResourceWorld rw = resolveWorld(worldId);
+                if (rw == null) {
+                    c.sender().sendMessage("Unknown world: " + worldId);
+                    return;
+                }
+                pregen.pause(rw.worldName());
+                c.sender().sendMessage("Pre-gen paused for " + worldId);
+            }));
+
+        manager.command(chunky.literal("resume")
+            .required("world", StringParser.stringParser(), chunkyWorldIds)
+            .handler(c -> {
+                String worldId = c.get("world");
+                ResourceWorld rw = resolveWorld(worldId);
+                if (rw == null) {
+                    c.sender().sendMessage("Unknown world: " + worldId);
+                    return;
+                }
+                pregen.resume(rw.worldName());
+                c.sender().sendMessage("Pre-gen resumed for " + worldId);
+            }));
+    }
+
+    private ResourceWorld resolveWorld(String worldId) {
+        return config.worlds().stream()
+            .filter(w -> w.id().equalsIgnoreCase(worldId))
+            .findFirst().orElse(null);
     }
 
     private void handleTeleport(Player p, String worldId) {

@@ -125,7 +125,8 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         java.time.Duration cooldownDuration = java.time.Duration.ofSeconds(5);
         new net.onewaycraft.owwr.plugin.commands.OwwrCommandModule(
             this, resetService, config, teleport, messages, history,
-            new net.onewaycraft.owwr.plugin.commands.CooldownTracker(cooldownDuration)
+            new net.onewaycraft.owwr.plugin.commands.CooldownTracker(cooldownDuration),
+            this.pregen
         ).register();
 
         autoCreateConfiguredWorlds();
