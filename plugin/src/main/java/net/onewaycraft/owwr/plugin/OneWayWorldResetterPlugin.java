@@ -1,6 +1,7 @@
 package net.onewaycraft.owwr.plugin;
 
 import net.onewaycraft.owwr.api.OwwrConfig;
+import net.onewaycraft.owwr.api.OwwrService;
 import net.onewaycraft.owwr.api.ResourceWorld;
 import net.onewaycraft.owwr.core.config.YamlConfigLoader;
 import net.onewaycraft.owwr.core.persistence.HistoryRepository;
@@ -27,6 +28,7 @@ import net.onewaycraft.owwr.paper.preflight.BukkitServerSnapshot;
 import net.onewaycraft.owwr.paper.schedule.PaperScheduler;
 import net.onewaycraft.owwr.paper.teleport.BukkitTeleportService;
 import org.bukkit.Bukkit;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -112,6 +114,12 @@ public final class OneWayWorldResetterPlugin extends JavaPlugin {
         schedulerLoop = new net.onewaycraft.owwr.core.schedule.ResetSchedulerLoop(
             scheduler, resetService, worldsById, java.time.ZoneId.systemDefault(), getLogger());
         schedulerLoop.start();
+
+        // Register public API via ServicesManager.
+        OwwrServiceImpl api = new OwwrServiceImpl(
+            config, resetService, state, history, java.time.ZoneId.systemDefault());
+        getServer().getServicesManager().register(
+            OwwrService.class, api, this, ServicePriority.Normal);
 
         try {
             if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
